@@ -15,9 +15,21 @@ import moviepy.editor as mp
     
 FRAMERATE = 23.989140
 DIALOGUEDELAY = .3
-INPUT = 'short.mp4'
-OUTPUT = 'output.mp4'
+INPUT = 'clips/14.mov'
+OUTPUT = 'output/14.mp4'
+COLOR = (255,255,0,255)
+BEGINTIMESTAMPTIME = (12, 0, 0)
+BEGINTIMESTAMPDATE = "JUN. 11 2018"
+RECOGNITIONBOUNDRIES = ((600,200),(1500,800))
 #facial recognition
+def drawBoxes(features):
+    for (x, y, w, h) in features:
+        if(RECOGNITIONBOUNDRIES == None or ( 
+            RECOGNITIONBOUNDRIES[0][0] < x and
+            RECOGNITIONBOUNDRIES[0][1] < y and
+            RECOGNITIONBOUNDRIES[1][0] > y+w and
+            RECOGNITIONBOUNDRIES[1][1] > y+h)):
+            cv2.rectangle(frame, (x, y), (x+w, y+h), COLOR, 5)
 
 # [START speech_transcribe_async_word_time_offsets_gcs]
 def transcribe_file(speech_file):
@@ -42,7 +54,8 @@ def transcribe_file(speech_file):
     print('Waiting for operation to complete...')
     result = operation.result(timeout=90)
     retval = [{}]
-
+    if len(result.results[0].alternatives) == 0:
+        return [{}]
     for result in result.results:
         alternative = result.alternatives[0]
         print(u'Transcript: {}'.format(alternative.transcript))
@@ -62,12 +75,27 @@ def transcribe_file(speech_file):
     return retval
 
 
-cascPath = "haarcascade_frontalface_default.xml"
+#FACE CONFIG
+cascPath = "haarcascades/haarcascade_frontalface_default.xml"
 faceCascade = cv2.CascadeClassifier(cascPath)
 log.basicConfig(filename='webcam.log',level=log.INFO)
 
+#EYE CONFIG
+cascPath = "haarcascades/haarcascade_eye.xml"
+eyeCascade = cv2.CascadeClassifier(cascPath)
+
+#SMILE CONFIG
+cascPath = "haarcascades/haarcascade_smile.xml"
+smileCascade = cv2.CascadeClassifier(cascPath)
+
+
+
+
 mp.VideoFileClip(INPUT).audio.write_audiofile('sound.wav', ffmpeg_params=["-ac", "1"])
 dialogue = transcribe_file('sound.wav')
+dialogue = [{}]
+#Soundwave thing
+soundarray = mp.VideoFileClip(INPUT).audio.to_soundarray(nbytes=4, buffersize=100, fps=FRAMERATE*1000)
 
 video_capture = cv2.VideoCapture(INPUT) #cv2.VideoCapture(0)
 
@@ -101,17 +129,12 @@ while True:
         print("ouch")
         break
 
-    faces = faceCascade.detectMultiScale(
-        gray,
-        scaleFactor=1.1,
-        minNeighbors=5,
-        minSize=(100, 100)
-    )
+    
     #angrilyscrollingText
     a -= 25
     if a < -33315*30:
        a = 0 
-    filepath = 'haarcascade_frontalface_default.xml'  
+    filepath = 'haarcascades/haarcascade_frontalface_default.xml'  
     with open(filepath) as fp:  
         line = fp.readline()
         cnt = 1
@@ -120,14 +143,28 @@ while True:
                 font                   = cv2.FONT_HERSHEY_DUPLEX
                 bottomLeftCornerOfText = (int(width) - 900,int(height)+ a + cnt*30  + 300)
                 fontScale              = 1
-                fontColor              = (0,255,0)
+                fontColor              = COLOR
                 lineType               = 2
 
                 cv2.putText(frame, line.strip(), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
             line = fp.readline()
             cnt += 1
+    #TIMESTAMP
+    font                   = cv2.FONT_HERSHEY_DUPLEX
+    bottomLeftCornerOfText = (0,int(height)- 40)
+    fontScale              = 2
+    fontColor              = COLOR
+    lineType               = 2
+
+
+    cv2.putText(frame, str(BEGINTIMESTAMPTIME[0]) + " : " + str(BEGINTIMESTAMPTIME[1]) + " : " + str(BEGINTIMESTAMPTIME[2]), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
+    bottomLeftCornerOfText = (0,int(height)- 100)
+    cv2.putText(frame, BEGINTIMESTAMPDATE, bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
+
+    BEGINTIMESTAMPTIME = (BEGINTIMESTAMPTIME[0], int(i// (FRAMERATE * 60)), int((i//FRAMERATE) % 60))
+
     #medbotlittle
-    filepath = 'medbotlittle.txt'  
+    filepath = 'littleside.txt'  
     with open(filepath) as fp:  
         line = fp.readline()
         lines = []
@@ -142,13 +179,13 @@ while True:
                 font                   = cv2.FONT_HERSHEY_DUPLEX
                 bottomLeftCornerOfText = (int(width) - 900, 600 - (len(lines) - q)*30)
                 fontScale              = 1
-                fontColor              = (0,255,0)
+                fontColor              = COLOR
                 lineType               = 2
 
                 cv2.putText(frame, line.strip(), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
                 q += 1
     #medbotbig
-    filepath = 'medbotbig.txt'  
+    filepath = 'bigcenter.txt'  
     with open(filepath) as fp:  
         line = fp.readline()
         lines = []
@@ -163,7 +200,7 @@ while True:
                 font                   = cv2.FONT_HERSHEY_DUPLEX
                 bottomLeftCornerOfText = (int(width/4), int(height/4))
                 fontScale              = 5
-                fontColor              = (0,255,0)
+                fontColor              = COLOR
                 lineType               = 2
 
                 cv2.putText(frame, line.strip(), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
@@ -183,23 +220,73 @@ while True:
             font                   = cv2.FONT_HERSHEY_DUPLEX
             bottomLeftCornerOfText = (int(width) - 900, 1200 - (len(lines) - q)*30)
             fontScale              = 1
-            fontColor              = (0,255,0)
+            fontColor              = COLOR
             lineType               = 2
 
             cv2.putText(frame, line.strip(), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
             q += 1
 
-            
+    #SOUND WAVE THING
 
+    font                   = cv2.FONT_HERSHEY_DUPLEX
+    bottomLeftCornerOfText = (0,int(height)- 200)
+    fontScale              = 2
+    fontColor              = COLOR
+    lineType               = 2
+
+    trail = int(1000*FRAMERATE)
+    if(0 != i):
+        cv2.putText(frame, "."*int(min([max(soundarray[max([i*1000-trail,0]):i*1000][0]*1000), 30])), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
+    
+    #FACES
+    faces = faceCascade.detectMultiScale(
+        gray,
+        scaleFactor=1.1,
+        minNeighbors=5,
+        minSize=(100, 100)
+    )
     # Draw a rectangle around the faces
-    for (x, y, w, h) in faces:
-        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0, 255), 5)
+    drawBoxes(faces)
 
     if anterior != len(faces):
         anterior = len(faces)
         log.info("faces: "+str(len(faces))+" at "+str(dt.datetime.now()))
+    
+    """
+    #EYES
+    eyes = eyeCascade.detectMultiScale(
+        gray,
+        scaleFactor=1.3,
+        minNeighbors=10,
+        minSize=(20, 20)
+    )
+    # Draw a rectangle around the eyes
+    drawBoxes(eyes)
+
+    #Draw a cross on the eyes
+    #for (x, y, w, h) in eyes:
+    #    cv2.line(frame, (x, y), (x+w, y+h), COLOR, 5)
+    #    cv2.line(frame, (x+w, y), (x, y+h), COLOR, 5)
 
 
+    if anterior != len(eyes):
+        anterior = len(eyes)
+        log.info("eyes: "+str(len(eyes))+" at "+str(dt.datetime.now()))
+
+    #SMILES
+    smiles = smileCascade.detectMultiScale(
+        gray,
+        scaleFactor=1.5,
+        minNeighbors=20,
+        minSize=(5, 5)
+    )
+    # Draw a rectangle around the smiles
+    drawBoxes(smiles)
+
+    if anterior != len(smiles):
+        anterior = len(smiles)
+        log.info("smiles: "+str(len(smiles))+" at "+str(dt.datetime.now()))
+    """
     
     # Display the resulting frame
     #cv2.imshow('Video', frame)
